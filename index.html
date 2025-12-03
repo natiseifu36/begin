@@ -34,6 +34,12 @@
 		</div>
 	</main>
 
-	<script src="main.js"></script>
+	<div style="text-align:center; margin-top:10px;">
+		<label for="usersFile" style="font-size:0.9rem;color:var(--muted);">Upload users file (`signup.xlsx`) to enable login:</label>
+		<input id="usersFile" type="file" accept=".xlsx,.xls" style="margin-left:8px;" />
+	</div>
+
+	<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+	<script src="javaScript/main.js"></script>
 </body>
 </html>

@@ -23,6 +23,44 @@ document.addEventListener('DOMContentLoaded', function () {
     const toggle = document.getElementById('togglePwd');
     const msg = document.getElementById('msg');
 
+    // Array to hold uploaded user records from signup.xlsx
+    window.usersRecords = window.usersRecords || [];
+    const usersFileInput = document.getElementById('usersFile');
+
+    // Helper to compute SHA-256 hex
+    async function sha256Hex(str){
+        if(!str) return '';
+        const enc = new TextEncoder();
+        const data = enc.encode(str);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2,'0')).join('');
+    }
+
+    // Handle users file upload and parse to JSON records using SheetJS
+    if(usersFileInput){
+        usersFileInput.addEventListener('change', function(ev){
+            const f = ev.target.files && ev.target.files[0];
+            if(!f) return;
+            const reader = new FileReader();
+            reader.onload = function(e){
+                try{
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const sheetName = workbook.SheetNames[0];
+                    const ws = workbook.Sheets[sheetName];
+                    const json = XLSX.utils.sheet_to_json(ws, {defval: ''});
+                    window.usersRecords = json;
+                    msg && (msg.textContent = 'Loaded ' + json.length + ' user(s) from file.');
+                } catch(err){
+                    console.error(err);
+                    msg && (msg.textContent = 'Failed to load users file.');
+                }
+            };
+            reader.readAsArrayBuffer(f);
+        });
+    }
+
     // Create email feedback element if missing
     let feedback = document.getElementById('email-feedback');
     if (!feedback && email) {
@@ -68,9 +106,9 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Form submit validation
+    // Form submit validation + authentication using uploaded signup.xlsx
     if(form){
-        form.addEventListener('submit', function(e){
+        form.addEventListener('submit', async function(e){
             e.preventDefault();
             let firstInvalid = null;
             if(!email || !isSimpleEmailValid(email.value)){
@@ -95,10 +133,21 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            // If passed, simulate submit success
-            msg.textContent = 'Signed in (demo)';
-            msg.style.color = '';
-            // In a real app, submit the form or call the API here.
+            // Need usersRecords loaded from uploaded signup.xlsx
+            if(!window.usersRecords || window.usersRecords.length === 0){
+                msg.textContent = 'No users file loaded — please upload signup.xlsx above.';
+                return;
+            }
+
+            const hashed = await sha256Hex(password.value || '');
+            const match = window.usersRecords.find(u => String(u.email || '').trim().toLowerCase() === String(email.value || '').trim().toLowerCase() && String(u.passwordHash || '').toLowerCase() === hashed.toLowerCase());
+            if(match){
+                // successful login — redirect to home
+                msg.textContent = 'Login successful — redirecting...';
+                setTimeout(()=>{ window.location.href = 'html/home.html'; }, 500);
+            } else {
+                msg.textContent = 'Invalid email or password.';
+            }
         });
     }
 });
@@ -257,7 +306,7 @@ document.addEventListener('DOMContentLoaded', function(){
         });
     }
 
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
         e.preventDefault();
         // name validation: ensure first/last start with alphabet
         let firstInvalid = null;
@@ -331,14 +380,50 @@ document.addEventListener('DOMContentLoaded', function(){
             return;
         }
 
-        // Simulate submission
+        // Simulate submission and export to signup.xlsx
         if(submitBtn){ submitBtn.disabled = true; submitBtn.textContent = 'Creating...'; }
-        setTimeout(()=>{
-            alert('Account created successfully (demo).');
-            form.reset();
-            if(strengthBar) strengthBar.style.width = '0%';
-            if(submitBtn){ submitBtn.disabled = false; submitBtn.textContent = 'Create account'; }
-        }, 900);
+
+        // helper: compute SHA-256 hex of password (avoid storing plaintext)
+        async function sha256Hex(str){
+            if(!str) return '';
+            const enc = new TextEncoder();
+            const data = enc.encode(str);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2,'0')).join('');
+        }
+
+        const pwdValue = pwd ? pwd.value : '';
+        const pwdHash = await sha256Hex(pwdValue);
+
+        const record = {
+            firstName: firstName ? firstName.value : '',
+            lastName: lastName ? lastName.value : '',
+            email: document.getElementById('email') ? document.getElementById('email').value : '',
+            age: age ? age.value : '',
+            gender: gender ? gender.value : '',
+            passwordHash: pwdHash,
+            createdAt: new Date().toISOString()
+        };
+
+        try{
+            if(typeof XLSX !== 'undefined'){
+                const ws = XLSX.utils.json_to_sheet([record]);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Signup');
+                XLSX.writeFile(wb, 'signup.xlsx');
+            } else {
+                console.warn('XLSX library not found; cannot export signup.xlsx');
+            }
+        } catch(err){
+            console.error('Export failed', err);
+        }
+
+        // Finish UI
+        alert('Account created successfully (demo). An export has been downloaded.');
+        form.reset();
+        if(strengthBar) strengthBar.style.width = '0%';
+        if(submitBtn){ submitBtn.disabled = false; submitBtn.textContent = 'Create account'; }
     });
 
     // Focus first invalid field when invalid event fires
