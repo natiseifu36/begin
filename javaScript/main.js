@@ -17,7 +17,7 @@ function validateAndShow(value, feedbackEl) {
 
 // Optional: set this to your deployed Apps Script Web App URL to use Google Sheets directly.
 // Example: 'https://script.google.com/macros/s/XXXXX/exec'
-const APPS_SCRIPT_URL = '';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwB-hu_z3V1UNaRjZ3Cla1_3BdbacPLguXPCYJrPr-S-YJfOMsvV3-GG1DspFSy0-Y9/exec';
 
 async function postToAppsScript(action, body){
     if(!APPS_SCRIPT_URL) throw new Error('APPS_SCRIPT_URL not configured');
@@ -532,24 +532,40 @@ document.addEventListener('DOMContentLoaded', function(){
             createdAt: new Date().toISOString()
         };
 
+        // Use Apps Script endpoint to create account; do NOT export any file client-side
         try{
-            if(typeof XLSX !== 'undefined'){
-                const ws = XLSX.utils.json_to_sheet([record]);
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, 'Signup');
-                XLSX.writeFile(wb, 'signup.xlsx');
+            if(APPS_SCRIPT_URL){
+                const resp = await postToAppsScript('signup', { record });
+                if(resp){
+                    if(resp.exists){
+                        const status = document.getElementById('msg');
+                        if(status) status.textContent = 'This email is already registered — please log in.';
+                        if(submitBtn){ submitBtn.disabled = false; submitBtn.textContent = 'Create account'; }
+                        return;
+                    }
+                    if(resp.ok){
+                        alert('Account created successfully (stored in Google Sheet).');
+                        form.reset();
+                        if(strengthBar) strengthBar.style.width = '0%';
+                        if(submitBtn){ submitBtn.disabled = false; submitBtn.textContent = 'Create account'; }
+                        return;
+                    }
+                }
+                throw new Error(resp && resp.error ? resp.error : 'Signup failed');
             } else {
-                console.warn('XLSX library not found; cannot export signup.xlsx');
+                // No remote configured — do not export files automatically
+                const status = document.getElementById('msg');
+                if(status) status.textContent = 'Signup is disabled: no remote service configured.';
+                if(submitBtn){ submitBtn.disabled = false; submitBtn.textContent = 'Create account'; }
+                return;
             }
         } catch(err){
-            console.error('Export failed', err);
+            console.error('Signup failed', err);
+            const status = document.getElementById('msg');
+            if(status) status.textContent = 'Signup failed: ' + String(err);
+            if(submitBtn){ submitBtn.disabled = false; submitBtn.textContent = 'Create account'; }
+            return;
         }
-
-        // Finish UI
-        alert('Account created successfully (demo). An export has been downloaded.');
-        form.reset();
-        if(strengthBar) strengthBar.style.width = '0%';
-        if(submitBtn){ submitBtn.disabled = false; submitBtn.textContent = 'Create account'; }
     });
 
     // Focus first invalid field when invalid event fires
@@ -559,5 +575,3 @@ document.addEventListener('DOMContentLoaded', function(){
         if(field && typeof field.focus === 'function') field.focus();
     }, true);
 });
-
-
