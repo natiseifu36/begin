@@ -1,25 +1,39 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
 	<meta charset="utf-8" />
-	<meta name="viewport" content="width=device-width, initial-scale=1" />
-	<link rel="stylesheet" href="../css/style.css">
-	<title>Home Page</title>
+	<meta name="viewport" content="width=device-width,initial-scale=1" />
+	<title>Login</title>
+	<link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
-	<header>
-		<h1>Welcome to Login Page</h1>
-	</header>
-	<main>
-		<label for="email"><b>Email</b></label>
-		<input type="email" placeholder="Enter your email" name="Email" required />
-		<br>
-		<label for="password"><b>Password</b></label>
-		<input type="password" placeholder="Enter your password" name="Password" required />
-		<br>
-		<button>login</button>
-		<br>
-		<a href="/html/signup.html">Sign Up</a>
-    </main>
+	<main class="container">
+		<form id="loginForm" class="card" novalidate>
+			<h1 class="title">Sign in</h1>
+
+			<label for="email" class="label">Email</label>
+			<input id="email" name="email" type="email" required autocomplete="username" class="input" data-validate="simple-email" aria-describedby="email-feedback" />
+
+			<label for="password" class="label">Password</label>
+			<div class="password-row">
+				<input id="password" name="password" type="password" required autocomplete="current-password" class="input" aria-describedby="password-help" />
+				<button type="button" id="togglePwd" class="toggle" aria-pressed="false" aria-label="Show password">Show</button>
+			</div>
+
+			<div class="row options">
+				<label class="remember"><input id="remember" type="checkbox" /> Remember me</label>
+				<a href="#" class="forgot">Forgot?</a>
+			</div>
+
+			<button id="submitBtn" type="submit" class="btn">Sign in</button>
+
+			<p id="msg" class="msg" role="status" aria-live="polite"></p>
+		</form>
+		<div class="footer" style="text-align:center; margin-top:12px;">
+			<span>Don't have an account? </span><a href="html/signup.html">Sign up</a>
+		</div>
+	</main>
+
+	<script src="main.js"></script>
 </body>
 </html>
