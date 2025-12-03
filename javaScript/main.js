@@ -27,6 +27,38 @@ document.addEventListener('DOMContentLoaded', function () {
     window.usersRecords = window.usersRecords || [];
     const usersFileInput = document.getElementById('usersFile');
 
+    // Try to fetch `files/signup.xlsx` from the repository if available (works when serving the folder)
+    (async function tryLoadRepoFile(){
+        const githubRaw = 'https://raw.githubusercontent.com/natiseifu36/begin/03d384f2091e03eb1da9dd25fdd8964101785318/files/signup.xlsx';
+        async function fetchAndParse(url){
+            const res = await fetch(url);
+            if(!res.ok) return null;
+            const arrayBuffer = await res.arrayBuffer();
+            const data = new Uint8Array(arrayBuffer);
+            const workbook = XLSX.read(data, {type: 'array'});
+            const sheetName = workbook.SheetNames[0];
+            const ws = workbook.Sheets[sheetName];
+            const json = XLSX.utils.sheet_to_json(ws, {defval: ''});
+            return json && json.length ? json : null;
+        }
+
+        try{
+            // try GitHub raw first
+            let json = null;
+            try { json = await fetchAndParse(githubRaw); } catch(e) { json = null; }
+            // fallback to local path
+            if(!json){
+                try { json = await fetchAndParse('files/signup.xlsx'); } catch(e){ json = null; }
+            }
+            if(json){
+                window.usersRecords = json;
+                msg && (msg.textContent = 'Loaded ' + json.length + ' user(s) from remote file');
+            }
+        }catch(err){
+            // ignore - fallback to file input
+        }
+    })();
+
     // Helper to compute SHA-256 hex
     async function sha256Hex(str){
         if(!str) return '';
@@ -178,6 +210,27 @@ document.addEventListener('DOMContentLoaded', function(){
     const gender = document.getElementById('gender');
     const ageHelp = document.getElementById('ageHelp');
     const genderHelp = document.getElementById('genderHelp');
+
+    // Try to preload existing users from repo file if available
+    (async function tryLoadRepoUsers(){
+        try{
+            const resp = await fetch('../files/signup.xlsx');
+            if(!resp.ok) return;
+            const arrayBuffer = await resp.arrayBuffer();
+            const data = new Uint8Array(arrayBuffer);
+            const workbook = XLSX.read(data, {type: 'array'});
+            const sheetName = workbook.SheetNames[0];
+            const ws = workbook.Sheets[sheetName];
+            const json = XLSX.utils.sheet_to_json(ws, {defval: ''});
+            if(json && json.length){
+                window.usersRecords = json;
+                const statusMsg = document.getElementById('msg');
+                if(statusMsg) statusMsg.textContent = 'Loaded ' + json.length + ' existing user(s) from repo.';
+            }
+        }catch(err){
+            // silent fail; fallback is manual upload on login page
+        }
+    })();
 
     if(toggle && pwd){
         toggle.addEventListener('click', () => {
@@ -378,6 +431,18 @@ document.addEventListener('DOMContentLoaded', function(){
         if (!form.checkValidity()){
             form.reportValidity();
             return;
+        }
+
+        // Check if email already exists in loaded usersRecords (if any)
+        const signupEmail = (document.getElementById('email') ? document.getElementById('email').value : '').trim().toLowerCase();
+        if(window.usersRecords && window.usersRecords.length){
+            const exists = window.usersRecords.find(u => String(u.email || '').trim().toLowerCase() === signupEmail);
+            if(exists){
+                const status = document.getElementById('msg');
+                if(status) status.textContent = 'This email is already registered — please log in.';
+                if(submitBtn){ submitBtn.disabled = false; submitBtn.textContent = 'Create account'; }
+                return;
+            }
         }
 
         // Simulate submission and export to signup.xlsx
