@@ -1,9 +1,9 @@
 body {
-  background-color: rgb(37, 155, 27);
+  background-color: #ffffff;
 }
 
 h1 {
-  color: white;
+  color: #000000;
   text-align: center;
 }
 
@@ -12,6 +12,18 @@ p {
   font-size: 20px;
 }
 h2 {
-  color: lightblue;
+  color: rgb(0, 0, 0);
   margin-left: 20px;
+}
+email, name {
+  color: rgb(0, 0, 0);
+  font-size: 20px;
+  align-items: center;
+  margin-left: 20px;
+}
+textarea {
+  margin-top: 20px;
+  margin-bottom: 10px;
+  width: 200px;
+  height: 20px;
 }
