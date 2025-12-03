@@ -15,6 +15,21 @@ function validateAndShow(value, feedbackEl) {
     }
 }
 
+// Optional: set this to your deployed Apps Script Web App URL to use Google Sheets directly.
+// Example: 'https://script.google.com/macros/s/XXXXX/exec'
+const APPS_SCRIPT_URL = '';
+
+async function postToAppsScript(action, body){
+    if(!APPS_SCRIPT_URL) throw new Error('APPS_SCRIPT_URL not configured');
+    const payload = Object.assign({action}, body || {});
+    const resp = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+    });
+    return resp.json();
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     // Elements
     const form = document.getElementById('loginForm');
@@ -165,16 +180,35 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            // Need usersRecords loaded from uploaded signup.xlsx
+            const hashed = await sha256Hex(password.value || '');
+
+            // If an Apps Script URL is configured, use it for authentication
+            if(APPS_SCRIPT_URL){
+                try{
+                    const res = await postToAppsScript('login', { email: String(email.value||'').trim().toLowerCase(), passwordHash: hashed });
+                    if(res && res.ok){
+                        msg.textContent = 'Login successful — redirecting...';
+                        setTimeout(()=>{ window.location.href = 'html/home.html'; }, 500);
+                        return;
+                    } else {
+                        msg.textContent = (res && res.error) ? String(res.error) : 'Invalid email or password.';
+                        return;
+                    }
+                } catch(err){
+                    console.error('Apps Script login failed', err);
+                    msg.textContent = 'Login service unavailable — try file upload method.';
+                    // fall through to file-based method
+                }
+            }
+
+            // Fallback: check local usersRecords loaded from XLSX upload or repo file
             if(!window.usersRecords || window.usersRecords.length === 0){
                 msg.textContent = 'No users file loaded — please upload signup.xlsx above.';
                 return;
             }
 
-            const hashed = await sha256Hex(password.value || '');
             const match = window.usersRecords.find(u => String(u.email || '').trim().toLowerCase() === String(email.value || '').trim().toLowerCase() && String(u.passwordHash || '').toLowerCase() === hashed.toLowerCase());
             if(match){
-                // successful login — redirect to home
                 msg.textContent = 'Login successful — redirecting...';
                 setTimeout(()=>{ window.location.href = 'html/home.html'; }, 500);
             } else {
@@ -435,6 +469,33 @@ document.addEventListener('DOMContentLoaded', function(){
 
         // Check if email already exists in loaded usersRecords (if any)
         const signupEmail = (document.getElementById('email') ? document.getElementById('email').value : '').trim().toLowerCase();
+
+        // If Apps Script is configured, ask it to create the account (it will check for duplicates)
+        if(APPS_SCRIPT_URL){
+            try{
+                const resp = await postToAppsScript('signup', { record });
+                if(resp){
+                    if(resp.exists){
+                        const status = document.getElementById('msg');
+                        if(status) status.textContent = 'This email is already registered — please log in.';
+                        if(submitBtn){ submitBtn.disabled = false; submitBtn.textContent = 'Create account'; }
+                        return;
+                    }
+                    if(resp.ok){
+                        alert('Account created successfully (stored in Google Sheet).');
+                        form.reset();
+                        if(strengthBar) strengthBar.style.width = '0%';
+                        if(submitBtn){ submitBtn.disabled = false; submitBtn.textContent = 'Create account'; }
+                        return;
+                    }
+                }
+            }catch(err){
+                console.error('Apps Script signup failed', err);
+                // fall back to file-based export
+            }
+        }
+
+        // Fallback: check local usersRecords
         if(window.usersRecords && window.usersRecords.length){
             const exists = window.usersRecords.find(u => String(u.email || '').trim().toLowerCase() === signupEmail);
             if(exists){
