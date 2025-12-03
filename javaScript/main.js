@@ -125,6 +125,10 @@ document.addEventListener('DOMContentLoaded', function(){
     const lastName = document.getElementById('lastName');
     const firstHelp = document.getElementById('firstNameHelp');
     const lastHelp = document.getElementById('lastNameHelp');
+    const age = document.getElementById('age');
+    const gender = document.getElementById('gender');
+    const ageHelp = document.getElementById('ageHelp');
+    const genderHelp = document.getElementById('genderHelp');
 
     if(toggle && pwd){
         toggle.addEventListener('click', () => {
@@ -222,6 +226,37 @@ document.addEventListener('DOMContentLoaded', function(){
 
     if(confirmPwd) confirmPwd.addEventListener('input', checkConfirm);
 
+    // Live checks for age and gender
+    if(age){
+        age.addEventListener('input', function(){
+            if(!age.value){
+                age.setCustomValidity('Age is required.');
+                if(ageHelp) ageHelp.textContent = 'Enter your age.';
+                return;
+            }
+            const val = Number(age.value);
+            if(Number.isNaN(val) || val < Number(age.min) || val > Number(age.max)){
+                age.setCustomValidity('Enter a valid age.');
+                if(ageHelp) ageHelp.textContent = 'Please enter a valid age between ' + age.min + ' and ' + age.max + '.';
+            } else {
+                age.setCustomValidity('');
+                if(ageHelp) ageHelp.textContent = '';
+            }
+        });
+    }
+
+    if(gender){
+        gender.addEventListener('change', function(){
+            if(!gender.value){
+                gender.setCustomValidity('Please select a gender option.');
+                if(genderHelp) genderHelp.textContent = 'Selection required.';
+            } else {
+                gender.setCustomValidity('');
+                if(genderHelp) genderHelp.textContent = '';
+            }
+        });
+    }
+
     form.addEventListener('submit', (e) => {
         e.preventDefault();
         // name validation: ensure first/last start with alphabet
@@ -244,6 +279,37 @@ document.addEventListener('DOMContentLoaded', function(){
             } else {
                 lastName.setCustomValidity('');
                 if(lastHelp) lastHelp.textContent = '';
+            }
+        }
+
+        // Age validation
+        if(age){
+            if(!age.value){
+                age.setCustomValidity('Age is required.');
+                if(ageHelp) ageHelp.textContent = 'Enter your age.';
+                firstInvalid = firstInvalid || age;
+            } else {
+                const val = Number(age.value);
+                if(Number.isNaN(val) || val < Number(age.min) || val > Number(age.max)){
+                    age.setCustomValidity('Enter a valid age.');
+                    if(ageHelp) ageHelp.textContent = 'Please enter a valid age between ' + age.min + ' and ' + age.max + '.';
+                    firstInvalid = firstInvalid || age;
+                } else {
+                    age.setCustomValidity('');
+                    if(ageHelp) ageHelp.textContent = '';
+                }
+            }
+        }
+
+        // Gender validation
+        if(gender){
+            if(!gender.value){
+                gender.setCustomValidity('Please select a gender option.');
+                if(genderHelp) genderHelp.textContent = 'Selection required.';
+                firstInvalid = firstInvalid || gender;
+            } else {
+                gender.setCustomValidity('');
+                if(genderHelp) genderHelp.textContent = '';
             }
         }
 
