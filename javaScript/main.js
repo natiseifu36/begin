@@ -121,6 +121,10 @@ document.addEventListener('DOMContentLoaded', function(){
     const terms = document.getElementById('terms');
     const termsError = document.getElementById('termsError');
     const submitBtn = document.getElementById('submitBtn');
+    const firstName = document.getElementById('firstName');
+    const lastName = document.getElementById('lastName');
+    const firstHelp = document.getElementById('firstNameHelp');
+    const lastHelp = document.getElementById('lastNameHelp');
 
     if(toggle && pwd){
         toggle.addEventListener('click', () => {
@@ -139,6 +143,45 @@ document.addEventListener('DOMContentLoaded', function(){
         if (/[0-9]/.test(value)) score++;
         if (/[^A-Za-z0-9]/.test(value)) score++;
         return score; // 0..4
+    }
+
+    // Names must start with an alphabetic character
+    function startsWithAlpha(value){
+        return /^[A-Za-z]/.test(String(value || ''));
+    }
+
+    if(firstName){
+        firstName.addEventListener('input', function(){
+            if(!firstName.value) {
+                firstName.setCustomValidity('');
+                if(firstHelp) firstHelp.textContent = '';
+                return;
+            }
+            if(!startsWithAlpha(firstName.value)){
+                firstName.setCustomValidity('First name must start with a letter.');
+                if(firstHelp) firstHelp.textContent = 'Must start with a letter.';
+            } else {
+                firstName.setCustomValidity('');
+                if(firstHelp) firstHelp.textContent = '';
+            }
+        });
+    }
+
+    if(lastName){
+        lastName.addEventListener('input', function(){
+            if(!lastName.value) {
+                lastName.setCustomValidity('');
+                if(lastHelp) lastHelp.textContent = '';
+                return;
+            }
+            if(!startsWithAlpha(lastName.value)){
+                lastName.setCustomValidity('Last name must start with a letter.');
+                if(lastHelp) lastHelp.textContent = 'Must start with a letter.';
+            } else {
+                lastName.setCustomValidity('');
+                if(lastHelp) lastHelp.textContent = '';
+            }
+        });
     }
 
     if(pwd){
@@ -181,12 +224,40 @@ document.addEventListener('DOMContentLoaded', function(){
 
     form.addEventListener('submit', (e) => {
         e.preventDefault();
+        // name validation: ensure first/last start with alphabet
+        let firstInvalid = null;
+        if(firstName){
+            if(!startsWithAlpha(firstName.value)){
+                firstName.setCustomValidity('First name must start with a letter.');
+                if(firstHelp) firstHelp.textContent = 'Must start with a letter.';
+                firstInvalid = firstInvalid || firstName;
+            } else {
+                firstName.setCustomValidity('');
+                if(firstHelp) firstHelp.textContent = '';
+            }
+        }
+        if(lastName){
+            if(!startsWithAlpha(lastName.value)){
+                lastName.setCustomValidity('Last name must start with a letter.');
+                if(lastHelp) lastHelp.textContent = 'Must start with a letter.';
+                firstInvalid = firstInvalid || lastName;
+            } else {
+                lastName.setCustomValidity('');
+                if(lastHelp) lastHelp.textContent = '';
+            }
+        }
+
         if(terms && !terms.checked){
             if(termsError) termsError.textContent = 'You must accept the terms to continue.';
-            terms.focus();
-            return;
+            if(!firstInvalid) firstInvalid = terms;
         } else if(termsError) {
             termsError.textContent = '';
+        }
+
+        if(firstInvalid){
+            firstInvalid.focus && firstInvalid.focus();
+            if(firstInvalid.reportValidity) firstInvalid.reportValidity();
+            return;
         }
 
         if (!form.checkValidity()){
